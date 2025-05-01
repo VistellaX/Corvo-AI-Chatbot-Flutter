@@ -25,7 +25,7 @@ class KnowledgeBaseService {
       print('KnowledgeBaseService.addPdfToKnowledgeBase: Caminho do arquivo recebido: ${pdfFile.path}');
       // Pega o diretório de documentos do aplicativo
       final directory = await getApplicationDocumentsDirectoryCallback();
-      // Define o nome do arquivo para o novo PDF (você pode precisar de um método melhor para gerar nomes de arquivos únicos)
+      //Define o nome do arquivo para o novo PDF (você pode precisar de um metodo melhor para gerar nomes de arquivos únicos)
       final fileName = '${DateTime.now().millisecondsSinceEpoch}.pdf';
       // Cria um novo caminho de arquivo para o novo PDF
       final newFilePath = '${directory.path}/$fileName';
