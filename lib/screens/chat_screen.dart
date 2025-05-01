@@ -10,6 +10,13 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ChatModel extends ChangeNotifier {
+  static final ChatModel _instance = ChatModel._internal();
+  factory ChatModel() {
+    return _instance;
+  }
+  ChatModel._internal() {
+    _loadHistory();
+  }
   final KnowledgeBaseService _knowledgeBaseService = KnowledgeBaseService(getApplicationDocumentsDirectory);
   final GeminiService _geminiService = GeminiService();
   final List<ChatMessage> _messages = [];
@@ -19,9 +26,37 @@ class ChatModel extends ChangeNotifier {
   List<String> get pdfPaths => _knowledgeBaseService.newPdfFile;
   List<String> get pdfFileNames => _knowledgeBaseService.getPdfFileNames();
 
-  ChatModel() {
-    print('ChatModel: Iniciando o construtor...');
-    _loadHistory();
+  Future<void> saveMessagesToJson(String filePath) async {
+    try {
+      final file = File(filePath);
+      final jsonString = jsonEncode(_messages.map((e) => e.toJson()).toList());
+      await file.writeAsString(jsonString);
+      print('Mensagens salvas em: $filePath');
+    } catch (e) {
+      print('Erro ao salvar mensagens: $e');
+    }
+  }
+
+  Future<void> loadMessagesFromJson(String filePath) async {
+    try {
+      final file = File(filePath);
+      if (!await file.exists()) {
+        print('Arquivo JSON não encontrado: $filePath');
+        return;
+      }
+      final jsonString = await file.readAsString();
+      final List<dynamic> jsonList = jsonDecode(jsonString);
+      _messages.clear();
+      _messages.addAll(jsonList.map((e) => ChatMessage.fromJson(e)).toList());
+      print('Mensagens carregadas de: $filePath');
+      notifyListeners();
+    } catch (e) {
+      print('Erro ao carregar mensagens: $e');
+    }
+  }
+  Future<String> get localPath async {
+    final directory = await getApplicationCacheDirectory();
+    return directory.path;
   }
 
   Future<void> sendMessage(String text) async {
@@ -88,6 +123,12 @@ class ChatModel extends ChangeNotifier {
     final data = _messages.map((e) => json.encode(e.toJson())).toList();
     await prefs.setStringList('chat_history', data);
   }
+
+  Future<void> clearHistory() async{
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('chat_history');
+  }
+
   void editMessage(int index, String newText) {
     final newMessage = ChatMessage(text: newText, isUser: _messages[index].isUser);
     _messages[index] = newMessage;//altera a mensagem original na lista completa
@@ -124,11 +165,40 @@ class _ChatScreenState extends State<ChatScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
   }
-  void _togglePdfList() {
+  void togglePdfList() {
     setState(() {
       _showPdfList = !_showPdfList;
     });
   }
+  //Metodo para salvar mensagens
+  void _saveMessages(BuildContext context) async {
+    final chat = context.read<ChatModel>();
+    String localPath = await chat.localPath;
+    String filePath = '$localPath/chat_history.jason';
+    await chat.saveMessagesToJson(filePath);
+    //Mostrar mensagens ao usuário
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Mensagens salvas em $filePath')),
+    );
+  }
+  //metodo para carregar mensagens
+  void _loadMessages(BuildContext context) async {
+    final chat = context.read<ChatModel>();
+    String localPath = await chat.localPath;
+    String filePath = '$localPath/chat_history.json';
+    await chat.loadMessagesFromJson(filePath);
+    if (chat.messages.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Nenhuma mensagem encontrada em $filePath')),
+      );
+      return;
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Mensagens carregadas de $filePath')),
+      );
+    }
+  }
+  //metodo para editar mensagens
   Future<void> _editMessage(int index) async {
     final chat = context.read<ChatModel>();
     final originalMessage = chat.messages[index];
@@ -169,29 +239,106 @@ class _ChatScreenState extends State<ChatScreen> {
     final chat = context.watch<ChatModel>();
     return Scaffold(
       appBar: AppBar(
-        leading: Padding(
-          padding: const EdgeInsets.all(4.0),
-          child: Image.asset('assets/corvo_icon.png'),
+        leading: Builder(
+          builder: (BuildContext context) {
+            return IconButton(
+              icon: Padding(
+                padding: const EdgeInsets.all(4.0),
+                child: Image.asset('assets/corvo_icon.png'),
+              ),
+              onPressed: () {
+                Scaffold.of(context).openDrawer();
+              },
+            );
+          },
         ),
         title: Text('Corvo AI Chatbot'),
         centerTitle: true,
         actions: [
           IconButton(
-            onPressed: () => context.read<ChatModel>().clearMessages(),
-            icon: Icon(Icons.chat_bubble_outline, color: Colors.white),
-          ),
-          IconButton(
-            onPressed: _togglePdfList,
-            icon: Icon(Icons.picture_as_pdf, color: Colors.white),
+            onPressed: togglePdfList,
+            icon: Icon(_showPdfList ? Icons.close : Icons.picture_as_pdf,
+            color: Colors.white),
           ),
           IconButton(
             onPressed: _scrollToBottom, // adicionado um novo botão para rolar a tela
             icon: Icon(Icons.arrow_downward, color: Colors.white),
-          )
+          ),
         ],
+      ),
+      drawer: Drawer(
+        child: Column(
+            children: [
+              DrawerHeader(
+                decoration: BoxDecoration(
+                  color: Color(0xFF2E0057),
+                ),
+                child: Center(
+                  child: Text(
+                    'Menu',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                    ),
+                  ),
+                ),
+              ),
+              ListTile(
+                leading: Icon(Icons.chat_bubble_outline, color: Colors.white),
+                title: Text('Limpar Chat', style: TextStyle(color: Colors.white)),
+                onTap: () {
+                  context.read<ChatModel>().clearMessages();
+                  context.read<ChatModel>().clearHistory();
+                  Navigator.of(context).pop();
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.save, color: Colors.white),
+                title: Text('Salvar', style: TextStyle(color: Colors.white)),
+                onTap: () {
+                  _saveMessages(context);
+                  Navigator.of(context).pop();
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.download, color: Colors.white),
+                title: Text('Carregar', style: TextStyle(color: Colors.white)),
+                onTap: () {
+                  _loadMessages(context);
+                  Navigator.of(context).pop();
+                }
+              ),
+            ],
+        ),
       ),
       body: Column(
         children: [
+          if (_showPdfList)
+            Container(
+              height: 100,
+              child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: chat.pdfFileNames.length,
+                  itemBuilder: (context, index) {
+                    final fileName = chat.pdfFileNames[index];
+                    final filePaths = chat.pdfPaths[index];
+                    return Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Row(
+                          children: [
+                            Text(fileName, style: TextStyle(color: Colors.white)),
+                            IconButton(
+                                icon: Icon(Icons.delete, color: Colors.red),
+                                onPressed: () {
+                                  context.read<ChatModel>().removePdf(filePaths).then((value) =>setState(() {}));
+                                }
+                            )
+                          ]
+                      ),
+                    );
+                  }
+              ),
+            ),
           Expanded(
             child: ListView.builder(
                 reverse: false,
@@ -242,34 +389,6 @@ class _ChatScreenState extends State<ChatScreen> {
                 }
             ),
           ),
-          //lista de arquivos pdfs carregados
-          if (_showPdfList)
-          Container(
-            height: 50,
-            child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                itemCount: chat.pdfFileNames.length,
-                itemBuilder: (context, index) {
-                  final fileName = chat.pdfFileNames[index];
-                  final filePaths = chat.pdfPaths[index];
-                  return Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Row(
-                      children: [
-                        Text(fileName, style: TextStyle(color: Colors.white)),
-                        IconButton(
-                          icon: Icon(Icons.delete, color: Colors.red),
-                          onPressed: () {
-                            context.read<ChatModel>().removePdf(filePaths).then((value) =>setState(() {}));
-                          }
-                        )
-                      ]
-                    ),
-                  );
-                }
-            ),
-          ),
-          Divider(height: 1, color: Colors.grey),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8.0),
             child: Row(
@@ -286,21 +405,21 @@ class _ChatScreenState extends State<ChatScreen> {
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.send, color: Color(0xFF2E0090)),
-                  onPressed: () {
-                    if (_textController.text.isNotEmpty) {
-                      context.read<ChatModel>().sendMessage(_textController.text);
-                      _scrollToBottom(); // ao enviar mensagem, rolar a tela para baixo
-                      _textController.clear();
+                    icon: const Icon(Icons.send, color: Color(0xFF2E0090)),
+                    onPressed: () {
+                      if (_textController.text.isNotEmpty) {
+                        context.read<ChatModel>().sendMessage(_textController.text);
+                        _scrollToBottom(); // ao enviar mensagem, rolar a tela para baixo
+                        _textController.clear();
+                      }
                     }
-                  }
                 ),
                 IconButton(
                   icon: const Icon(Icons.attach_file, color: Color(0xFF2E0090)),
                   onPressed: () {
                     context.read<ChatModel>().addPdfToKnowledgeBase().then((value) =>setState(() {}));
                   },
-                )
+                ),
               ],
             ),
           ),
