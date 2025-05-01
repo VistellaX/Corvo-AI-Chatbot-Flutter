@@ -1,6 +1,7 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
+import 'package:uuid/uuid.dart';
 
 class KnowledgeBaseService {
   List<String> knowledgeBase = [];
@@ -25,8 +26,14 @@ class KnowledgeBaseService {
       print('KnowledgeBaseService.addPdfToKnowledgeBase: Caminho do arquivo recebido: ${pdfFile.path}');
       // Pega o diretório de documentos do aplicativo
       final directory = await getApplicationDocumentsDirectoryCallback();
-      //Define o nome do arquivo para o novo PDF (você pode precisar de um metodo melhor para gerar nomes de arquivos únicos)
-      final fileName = '${DateTime.now().millisecondsSinceEpoch}.pdf';
+      //gera uuid para nome unico
+      const uuid = Uuid();
+      final fileUuid = uuid.v4();
+      //pega o nome original do arquivo
+      final originalFileName = pdfFile.path.split('/').last;
+      final cleanFileName = _cleanFileName(originalFileName);
+      //Define o nome do arquivo para o novo PDF com uuid e nome original
+      final fileName = '${fileUuid}_${cleanFileName}';
       // Cria um novo caminho de arquivo para o novo PDF
       final newFilePath = '${directory.path}/$fileName';
       // Copia o arquivo PDF para o diretório de documentos do app
@@ -44,6 +51,17 @@ class KnowledgeBaseService {
       print('Erro ao adicionar PDF: $e');
     }
   }
+  //Remove caracteres especiais do nome do arquivo
+  String _cleanFileName(String fileName) {
+    // Remove caracteres especiais do nome do arquivo
+    String cleanedFileName = fileName.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_');
+    //garante que a extensão .pdf esteja presente
+    if (!cleanedFileName.toLowerCase().endsWith('.pdf')){
+      cleanedFileName += '.pdf';
+    }
+    return cleanedFileName;
+  }
+
   // Extrair o texto do PDF
   Future<String> _extractTextFromPdf(File pdfFile) async {
     final bytes = await pdfFile.readAsBytes();
@@ -99,7 +117,7 @@ class KnowledgeBaseService {
     return prefs.getStringList('pdf_paths') ?? [];
   }
   // pega a lista de caminhos para os pdfs
-  List<String> get newPdfFile => _pdfPaths;
+  List<String> getPdfFromKnowledgeBase() => _pdfPaths;
 
   Future<void> removePdfFromKnowledgeBase(String pdfPath) async {
     try {

@@ -1,14 +1,17 @@
+import 'package:corvo_ai_chatbot_db/services/knowledge_base_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'screens/chat_screen.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:path_provider/path_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: '.env');
+  final knowledgeBaseService = KnowledgeBaseService(getApplicationDocumentsDirectory);
   runApp(
     ChangeNotifierProvider(
-      create: (_) => ChatModel(),
+      create: (_) => ChatModel(knowledgeBaseService),
       child: const CorvoApp(),
     ),
   );

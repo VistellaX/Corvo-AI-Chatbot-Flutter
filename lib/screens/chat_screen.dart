@@ -10,22 +10,24 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ChatModel extends ChangeNotifier {
-  static final ChatModel _instance = ChatModel._internal();
-  factory ChatModel() {
-    return _instance;
-  }
-  ChatModel._internal() {
-    _loadHistory();
-  }
-  final KnowledgeBaseService _knowledgeBaseService = KnowledgeBaseService(getApplicationDocumentsDirectory);
-  final GeminiService _geminiService = GeminiService();
   final List<ChatMessage> _messages = [];
+  final GeminiService _geminiService = GeminiService();
+  final KnowledgeBaseService _knowledgeBaseService;
+  // pega a lista de caminhos para os pdfs
+  List<String> pdfFileNames = [];
+  List<String> pdfPaths = [];
+
   List<ChatMessage> get messages => _messages;
 
-  // pega a lista de caminhos para os pdfs
-  List<String> get pdfPaths => _knowledgeBaseService.newPdfFile;
-  List<String> get pdfFileNames => _knowledgeBaseService.getPdfFileNames();
-
+  ChatModel(this._knowledgeBaseService) {
+    _loadHistory();
+    List<String> pdfs = _knowledgeBaseService.getPdfFromKnowledgeBase();
+    pdfFileNames.clear();
+    pdfPaths.clear();
+    pdfFileNames.addAll(pdfs.map((e) => e.split('/').last).toList());
+    pdfPaths.addAll(pdfs.toList());
+    notifyListeners();
+  }
   Future<void> saveMessagesToJson(String filePath) async {
     try {
       final file = File(filePath);
@@ -87,6 +89,11 @@ class ChatModel extends ChangeNotifier {
       File file = File(result.files.first.path!);
       await _knowledgeBaseService.addPdfToKnowledgeBase(file);
       print('PDF adicionado com sucesso!');
+      final pdfs = _knowledgeBaseService.getPdfFromKnowledgeBase();
+      pdfFileNames.clear();
+      pdfPaths.clear();
+      pdfFileNames.addAll(pdfs.map((e) => e.split('/').last).toList());
+      pdfPaths.addAll(pdfs.toList());
       notifyListeners();
     } else {
       print('Nenhum PDF selecionado.');
@@ -95,6 +102,11 @@ class ChatModel extends ChangeNotifier {
 
   Future<void> removePdf(String pdfPath) async {
     await _knowledgeBaseService.removePdfFromKnowledgeBase(pdfPath);
+    final pdfs = _knowledgeBaseService.getPdfFromKnowledgeBase(); // Corrigido a chamada aqui
+    pdfFileNames.clear();
+    pdfPaths.clear();
+    pdfFileNames.addAll(pdfs.map((e) => e.split('/').last).toList());
+    pdfPaths.addAll(pdfs.toList());
     notifyListeners();
   }
 
@@ -232,6 +244,14 @@ class _ChatScreenState extends State<ChatScreen> {
     if (_scrollController.hasClients) {
       _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
     }
+  }
+
+  void addPdfToChat(BuildContext context) async{
+    final chat = context.read<ChatModel>();
+    await chat.addPdfToKnowledgeBase();
+    setState(() {
+      _showPdfList = true;
+    });
   }
   @override
   Widget build(BuildContext context) {
