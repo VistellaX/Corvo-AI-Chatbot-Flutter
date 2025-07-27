@@ -5,7 +5,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 class GeminiService {
   final String? apiKey = dotenv.env['GEMINI_API_KEY'];
   final String? apiUrl = dotenv.env['GEMINI_API_URL'];
-  static const String _systemPrompt = ''' Descreva a personalidade e regras.
+  static const String _systemPrompt = ''' Descreva a personalidade e regras. 
 ''';
 
   Future<String> callGemini(List<Map<String, dynamic>> msgs, String additionalContext) async {
