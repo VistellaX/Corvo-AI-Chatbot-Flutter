@@ -8,7 +8,7 @@ As funcionalidades que o Chatbot apresenta incluem:
  - memória contextual;
  - respostas aprimoradas com base em arquivos pdf que o usuário anexa ao banco de dados do corvo;
  - remoção de contexto;
- - apagar ou editar mensagens da conversa.
+ - apagar ou editar mensagens da conversa, o que possibilita ajuste fino nas mensagens posteriores do bot.
 
 Esta é uma demonstração do código fonte de um projeto pessoal cujo objetivo seria focar no desenvolvimento de um personagem único. 
 
