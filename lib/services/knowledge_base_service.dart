@@ -20,7 +20,7 @@ class KnowledgeBaseService {
     });
   }
 
-  Future<void> addPdfToKnowledgeBase(File pdfFile) async {
+  Future<bool> addPdfToKnowledgeBase(File pdfFile) async {
     try {
       print('KnowledgeBaseService.addPdfToKnowledgeBase: Iniciando...');
       print('KnowledgeBaseService.addPdfToKnowledgeBase: Caminho do arquivo recebido: ${pdfFile.path}');
@@ -31,6 +31,11 @@ class KnowledgeBaseService {
       final fileUuid = uuid.v4();
       //pega o nome original do arquivo
       final originalFileName = pdfFile.path.split('/').last;
+      final fileExists = await _checkIfPdfExists(originalFileName);
+      if (fileExists) {
+        print('O arquivo $originalFileName já existe no banco de dados.');
+        return true;
+      }
       final cleanFileName = _cleanFileName(originalFileName);
       //Define o nome do arquivo para o novo PDF com uuid e nome original
       final fileName = '${fileUuid}_${cleanFileName}';
@@ -47,9 +52,17 @@ class KnowledgeBaseService {
       // Armazena o novo caminho de arquivo
       await _savePdfPath(newFilePath);
       print('PDF adicionado com sucesso! Novo caminho: $newFilePath');
+      return false;
     } catch (e) {
       print('Erro ao adicionar PDF: $e');
+      return false;
     }
+  }
+
+  //verifica se o arquivo ja existe
+  Future<bool> _checkIfPdfExists(String fileName) async {
+    // verifica se o caminho do arquivo ja existe
+    return _pdfPaths.any((path) => path.split('/').last == fileName);
   }
   //Remove caracteres especiais do nome do arquivo
   String _cleanFileName(String fileName) {

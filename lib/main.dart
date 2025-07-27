@@ -24,6 +24,7 @@ class CorvoApp extends StatelessWidget {
   Widget build(BuildContext context) {
     print('CorvoApp: build() chamado.');
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       title: 'Corvo AI Chatbot',
       theme: ThemeData(
         brightness: Brightness.dark,

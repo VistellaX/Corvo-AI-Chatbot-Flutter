@@ -21,12 +21,7 @@ class ChatModel extends ChangeNotifier {
 
   ChatModel(this._knowledgeBaseService) {
     _loadHistory();
-    List<String> pdfs = _knowledgeBaseService.getPdfFromKnowledgeBase();
-    pdfFileNames.clear();
-    pdfPaths.clear();
-    pdfFileNames.addAll(pdfs.map((e) => e.split('/').last).toList());
-    pdfPaths.addAll(pdfs.toList());
-    notifyListeners();
+    _updatePdfList();
   }
   Future<void> saveMessagesToJson(String filePath) async {
     try {
@@ -36,6 +31,7 @@ class ChatModel extends ChangeNotifier {
       print('Mensagens salvas em: $filePath');
     } catch (e) {
       print('Erro ao salvar mensagens: $e');
+      notifyListeners();
     }
   }
 
@@ -44,6 +40,7 @@ class ChatModel extends ChangeNotifier {
       final file = File(filePath);
       if (!await file.exists()) {
         print('Arquivo JSON não encontrado: $filePath');
+        notifyListeners();
         return;
       }
       final jsonString = await file.readAsString();
@@ -80,29 +77,30 @@ class ChatModel extends ChangeNotifier {
     await _saveHistory();
   }
   // adiciona PDF na base de conhecimento
-  Future<void> addPdfToKnowledgeBase() async{
+  Future<bool> addPdfToKnowledgeBase() async{
     FilePickerResult? result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['pdf'],
     );
     if (result != null && result.files.isNotEmpty) {
       File file = File(result.files.first.path!);
-      await _knowledgeBaseService.addPdfToKnowledgeBase(file);
+      final fileAdded = await _knowledgeBaseService.addPdfToKnowledgeBase(file);
+      _updatePdfList();
       print('PDF adicionado com sucesso!');
-      final pdfs = _knowledgeBaseService.getPdfFromKnowledgeBase();
-      pdfFileNames.clear();
-      pdfPaths.clear();
-      pdfFileNames.addAll(pdfs.map((e) => e.split('/').last).toList());
-      pdfPaths.addAll(pdfs.toList());
-      notifyListeners();
+      return fileAdded;
     } else {
       print('Nenhum PDF selecionado.');
+      return false;
     }
   }
 
   Future<void> removePdf(String pdfPath) async {
     await _knowledgeBaseService.removePdfFromKnowledgeBase(pdfPath);
-    final pdfs = _knowledgeBaseService.getPdfFromKnowledgeBase(); // Corrigido a chamada aqui
+    _updatePdfList();
+  }
+
+  void _updatePdfList() {
+    final pdfs = _knowledgeBaseService.getPdfFromKnowledgeBase();
     pdfFileNames.clear();
     pdfPaths.clear();
     pdfFileNames.addAll(pdfs.map((e) => e.split('/').last).toList());
@@ -134,11 +132,13 @@ class ChatModel extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     final data = _messages.map((e) => json.encode(e.toJson())).toList();
     await prefs.setStringList('chat_history', data);
+    notifyListeners();
   }
 
   Future<void> clearHistory() async{
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('chat_history');
+    notifyListeners();
   }
 
   void editMessage(int index, String newText) {
@@ -177,6 +177,41 @@ class _ChatScreenState extends State<ChatScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
   }
+
+  void showPdfList(BuildContext context){
+    final chat = context.read<ChatModel>();
+    if(chat.pdfFileNames.isNotEmpty){
+      setState(() {
+        _showPdfList = true;
+      });
+    }
+  }
+
+  void addPdfToChat(BuildContext context) async {
+    final chat = context.read<ChatModel>();
+    final fileAdded = await chat.addPdfToKnowledgeBase();
+    if (fileAdded) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('O arquivo já está na base de dados'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } else {
+      showPdfList(context);
+    }
+  }
+
+  void removePdfFromChat(BuildContext context, String pdfPath) async {
+    final chat = context.read<ChatModel>();
+    await chat.removePdf(pdfPath);
+    if(chat.pdfFileNames.isEmpty){
+      setState(() {
+        _showPdfList = false;
+      });
+    }
+  }
+
   void togglePdfList() {
     setState(() {
       _showPdfList = !_showPdfList;
@@ -244,14 +279,6 @@ class _ChatScreenState extends State<ChatScreen> {
     if (_scrollController.hasClients) {
       _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
     }
-  }
-
-  void addPdfToChat(BuildContext context) async{
-    final chat = context.read<ChatModel>();
-    await chat.addPdfToKnowledgeBase();
-    setState(() {
-      _showPdfList = true;
-    });
   }
   @override
   Widget build(BuildContext context) {
@@ -334,29 +361,19 @@ class _ChatScreenState extends State<ChatScreen> {
       body: Column(
         children: [
           if (_showPdfList)
-            Container(
-              height: 100,
+            Expanded(
               child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: chat.pdfFileNames.length,
-                  itemBuilder: (context, index) {
-                    final fileName = chat.pdfFileNames[index];
-                    final filePaths = chat.pdfPaths[index];
-                    return Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Row(
-                          children: [
-                            Text(fileName, style: TextStyle(color: Colors.white)),
-                            IconButton(
-                                icon: Icon(Icons.delete, color: Colors.red),
-                                onPressed: () {
-                                  context.read<ChatModel>().removePdf(filePaths).then((value) =>setState(() {}));
-                                }
-                            )
-                          ]
-                      ),
-                    );
-                  }
+                itemCount: chat.pdfFileNames.length,
+                itemBuilder: (context, index) {
+                  return ListTile(
+                    title: Text(chat.pdfFileNames[index]),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.delete),
+                      onPressed: () =>
+                          removePdfFromChat(context, chat.pdfPaths[index]),
+                    ),
+                  );
+                },
               ),
             ),
           Expanded(
