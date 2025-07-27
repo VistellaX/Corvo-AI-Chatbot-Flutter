@@ -12,6 +12,6 @@ As funcionalidades que o Chatbot apresenta incluem:
 
 Esta é uma demonstração do código fonte de um projeto pessoal cujo objetivo seria focar no desenvolvimento de um personagem único. 
 
-
+AVISO: desenvolvido apenas na versão Android.
 
 
