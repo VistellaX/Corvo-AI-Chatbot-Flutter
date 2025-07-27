@@ -1,16 +1,17 @@
-# corvo_ai_chatbot_db
+# corvo_ai_chatbot
 
-Corvo Dart Based
+A Atual versão deste chatbot utiliza a linguagem Dart com framework flutter garantindo uma experiência visual mais agradável.
 
-## Getting Started
+O Corvo é alimentando pela IA Gemini do Google.
 
-This project is a starting point for a Flutter application.
+As funcionalidades que o Chatbot apresenta incluem:
+ - memória contextual;
+ - respostas aprimoradas com base em arquivos pdf que o usuário anexa ao banco de dados do corvo;
+ - remoção de contexto;
+ - apagar ou editar mensagens da conversa.
 
-A few resources to get you started if this is your first Flutter project:
+Esta é uma demonstração do código fonte de um projeto pessoal cujo objetivo seria focar no desenvolvimento de um personagem único. 
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+
+
