@@ -1,17 +1,15 @@
 # corvo_ai_chatbot
 
-A Atual versão deste chatbot utiliza a linguagem Dart com framework flutter garantindo uma experiência visual mais agradável.
+The current version of this chatbot uses the Dart language with the Flutter framework, ensuring a more pleasant visual experience. It's an old, outdated project with obsolete libraries.
 
-O Corvo é alimentando pela IA Gemini do Google.
+The character uses Google's Gemini AI.
 
-As funcionalidades que o Chatbot apresenta incluem:
- - memória contextual;
- - respostas aprimoradas com base em arquivos pdf que o usuário anexa ao banco de dados do corvo;
- - remoção de contexto;
- - apagar ou editar mensagens da conversa, o que possibilita ajuste fino de respostas e personalidade do bot.
+The Chatbot's features include:
+- contextual memory;
+- enhanced responses based on PDF files that the user attaches to knowledge sources;
+- context removal;
+- deleting or editing messages from the conversation, which allows for fine-tuning the bot's responses and personality.
 
-Esta é uma demonstração do código fonte de um projeto pessoal cujo objetivo seria focar no desenvolvimento de um personagem único. 
+This is a source code demo for a personal project focused on developing a unique character.
 
-AVISO: desenvolvido apenas na versão Android.
-
-
+NOTE: Developed for Android only.
