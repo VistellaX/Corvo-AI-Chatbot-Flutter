@@ -12,4 +12,4 @@ The Chatbot's features include:
 
 This is a source code demo for a personal project focused on developing a unique character.
 
-NOTE: Developed for Android only.
+NOTE: Development focused on Android only.
